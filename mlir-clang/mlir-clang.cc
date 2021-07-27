@@ -145,6 +145,8 @@ int main(int argc, char **argv) {
     }
     return 0;
   }
+
+  // FIXME: %100 memory leak.
   auto module =
       mlir::ModuleOp::create(mlir::OpBuilder(&context).getUnknownLoc());
 

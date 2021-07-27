@@ -2,6 +2,13 @@ add_clang_tool(mlir-clang
   mlir-clang.cc
   Lib/utils.cc
   Lib/pragmaHandler.cc
+
+  #Linalg plugin
+  Lib/Plugin/Linalg/MLIRAffineExprGen.cpp
+  Lib/Plugin/Linalg/MLIRGen.cpp
+  Lib/Plugin/Linalg/tc/lexer.cc
+  Lib/Plugin/Linalg/tc/parser.cc
+  Lib/Plugin/Linalg/tc/tree.cpp
 )
 
 target_include_directories(mlir-clang PRIVATE

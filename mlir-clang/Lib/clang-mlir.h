@@ -313,6 +313,7 @@ struct MLIRASTConsumer : public ASTConsumer {
   bool error;
   ScopLocList scopLocList;
   LowerToInfo LTInfo;
+  PluginInfo PLInfo;
 
   /// The stateful type translator (contains named structs).
   LLVM::TypeFromLLVMIRTranslator typeTranslator;
@@ -340,6 +341,7 @@ struct MLIRASTConsumer : public ASTConsumer {
     addPragmaScopHandlers(PP, scopLocList);
     addPragmaEndScopHandlers(PP, scopLocList);
     addPragmaLowerToHandlers(PP, LTInfo);
+    addPragmaPlugin(PP, PLInfo);
   }
 
   ~MLIRASTConsumer() {}
@@ -458,13 +460,15 @@ public:
   ValueWithOffsets ThisVal;
   mlir::Value returnVal;
   LowerToInfo &LTInfo;
+  PluginInfo &PLInfo;
 
   MLIRScanner(MLIRASTConsumer &Glob, mlir::FuncOp function,
               const FunctionDecl *fd, mlir::ModuleOp &module,
-              LowerToInfo &LTInfo)
+              LowerToInfo &LTInfo, PluginInfo &PLInfo)
       : Glob(Glob), function(function), module(module),
         builder(module.getContext()), loc(builder.getUnknownLoc()),
-        EmittingFunctionDecl(fd), ThisCapture(nullptr), LTInfo(LTInfo) {
+        EmittingFunctionDecl(fd), ThisCapture(nullptr), LTInfo(LTInfo),
+        PLInfo(PLInfo) {
 
     if (ShowAST) {
       llvm::errs() << "Emitting fn: " << function.getName() << "\n";

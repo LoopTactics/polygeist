@@ -4,6 +4,8 @@
 #define MLIR_TOOLS_MLIRCLANG_UTILS_H
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/ScopedHashTable.h"
+#include <map>
 
 namespace mlir {
 class Operation;
@@ -35,6 +37,10 @@ mlir::Operation *buildLinalgOp(const mlir::AbstractOperation *op,
                                mlir::OpBuilder &b,
                                llvm::SmallVectorImpl<mlir::Value> &input,
                                llvm::SmallVectorImpl<mlir::Value> &output);
+
+mlir::Operation *buildFunctionBodyWithPlugin(
+    mlir::FuncOp f, std::string composedExpr, mlir::OpBuilder &b,
+    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &mapOperands);
 
 } // namespace mlirclang
 

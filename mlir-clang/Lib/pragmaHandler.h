@@ -15,6 +15,11 @@ struct LowerToInfo {
   llvm::SmallVector<llvm::StringRef, 2> OutputSymbol;
 };
 
+/// POD for plugins
+struct PluginInfo {
+  llvm::StringMap<std::string> SymbolTable;
+};
+
 /// The location of the scop, as delimited by scop and endscop
 /// pragmas by the user.
 /// "scop" and "endscop" are the source locations of the scop and
@@ -84,5 +89,6 @@ void addPragmaLowerToHandlers(clang::Preprocessor &PP, LowerToInfo &LTInfo);
 void addPragmaScopHandlers(clang::Preprocessor &PP, ScopLocList &scopLocList);
 void addPragmaEndScopHandlers(clang::Preprocessor &PP,
                               ScopLocList &scopLocList);
+void addPragmaPlugin(clang::Preprocessor &PP, PluginInfo &plinfo);
 
 #endif

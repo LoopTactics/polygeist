@@ -2249,7 +2249,9 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
   std::vector<std::pair<ValueWithOffsets, ValueWithOffsets>> toRestore;
 
   // map from declaration name to mlir::value
-  std::map<std::string, mlir::Value> mapFuncOperands;
+  llvm::ScopedHashTable<llvm::StringRef, mlir::Value> mapFuncOperands;
+  llvm::ScopedHashTableScope<llvm::StringRef, mlir::Value> scope(
+      mapFuncOperands);
 
   for (clang::Expr *a : expr->arguments()) {
     ValueWithOffsets arg = Visit(a);
@@ -2258,10 +2260,13 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
       a->dump();
     }
     assert(arg.val && "expect not null");
+
     if (auto ice = dyn_cast<ImplicitCastExpr>(a))
-      if (auto dre = dyn_cast<DeclRefExpr>(ice->getSubExpr()))
-        mapFuncOperands.insert(
-            make_pair(dre->getDecl()->getName().str(), arg.val));
+      if (auto dre = dyn_cast<DeclRefExpr>(ice->getSubExpr())) {
+        llvm::errs() << "arg: " << arg.val << "\n";
+        llvm::errs() << dre->getDecl()->getName() << "\n";
+        mapFuncOperands.insert(dre->getDecl()->getName(), arg.val);
+      }
 
     if (i >= fnType.getInputs().size()) {
       expr->dump();
@@ -2385,11 +2390,11 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
     SmallVector<mlir::Value> inputOperands;
     SmallVector<mlir::Value> outputOperands;
     for (StringRef input : LTInfo.InputSymbol)
-      if (mapFuncOperands.find(input.str()) != mapFuncOperands.end())
-        inputOperands.push_back(mapFuncOperands[input.str()]);
+      if (mlir::Value v = mapFuncOperands.lookup(input))
+        inputOperands.push_back(v);
     for (StringRef output : LTInfo.OutputSymbol)
-      if (mapFuncOperands.find(output.str()) != mapFuncOperands.end())
-        outputOperands.push_back(mapFuncOperands[output.str()]);
+      if (mlir::Value v = mapFuncOperands.lookup(output))
+        outputOperands.push_back(v);
 
     if (inputOperands.size() == 0)
       inputOperands.append(args);
@@ -2399,6 +2404,22 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
                                 builder, inputOperands, outputOperands)
                                 ->getResult(0),
                             /*isReference=*/false);
+  }
+
+  // handle plugin
+  if (PLInfo.SymbolTable.count(tocall.getName())) {
+    mlir::Value tensorResult = mlirclang::buildFunctionBodyWithPlugin(
+                                   tocall, PLInfo.SymbolTable[tocall.getName()],
+                                   builder, mapFuncOperands)
+                                   ->getResult(0);
+    llvm::ArrayRef<mlir::Type> funcResult = tocall.getCallableResults();
+    // tensorResult.dump();
+    // llvm::errs() << funcResult.size() << "\n";
+    // funcResult[0].dump();
+    // assert(0);
+    mlir::Value cast = builder.create<memref::BufferCastOp>(
+        builder.getUnknownLoc(), funcResult[0], tensorResult);
+    return ValueWithOffsets(cast, false);
   }
 
   bool isArrayReturn = false;
@@ -4562,7 +4583,8 @@ void MLIRASTConsumer::run() {
     if (done.count(name))
       continue;
     done.insert(name);
-    MLIRScanner ms(*this, GetOrCreateMLIRFunction(FD), FD, module, LTInfo);
+    MLIRScanner ms(*this, GetOrCreateMLIRFunction(FD), FD, module, LTInfo,
+                   PLInfo);
   }
 }
 

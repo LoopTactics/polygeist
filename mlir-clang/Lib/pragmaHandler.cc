@@ -225,6 +225,88 @@ struct PragmaEndScopHandler : public PragmaHandler {
   }
 };
 
+/// #pragma plugin(func_gemm, "linalg", "C(i,j) += A(i,k) * B(k,j)")
+struct PragmaPluginHandler : public PragmaHandler {
+  PluginInfo &plinfo;
+
+  PragmaPluginHandler(PluginInfo &plinfo)
+      : PragmaHandler("plugin"), plinfo(plinfo) {}
+
+  void HandlePragma(Preprocessor &PP, PragmaIntroducer introducer,
+                    Token &endScopTok) override {
+    Token Tok;
+    PP.Lex(Tok); // lparen
+    if (Tok.isNot(tok::l_paren)) {
+      PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_lparen) << "plugin";
+      return;
+    }
+
+    Token FuncIdTok; // function identifier
+    PP.Lex(FuncIdTok);
+    if (FuncIdTok.isNot(tok::identifier)) {
+      PP.Diag(FuncIdTok.getLocation(), diag::warn_pragma_expected_identifier)
+          << "plugin";
+      return;
+    }
+
+    llvm::StringRef FuncId = FuncIdTok.getIdentifierInfo()->getName();
+
+    PP.Lex(Tok); // comma
+    if (Tok.isNot(tok::comma)) {
+      PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_comma) << "plugin";
+      return;
+    }
+
+    // plugin name
+    Token StringLiteralTok;
+    PP.Lex(StringLiteralTok);
+    if (StringLiteralTok.isNot(tok::string_literal)) {
+      PP.Diag(StringLiteralTok.getLocation(),
+              diag::warn_pragma_expected_section_name)
+          << "plugin";
+      return;
+    }
+    SmallVector<Token, 1> StringLiteralTokens;
+    StringLiteralTokens.push_back(StringLiteralTok);
+    std::string pluginName =
+        StringLiteralParser(StringLiteralTokens, PP).GetString().str();
+    llvm::errs() << "PLUGINAME: " << pluginName << "\n";
+
+    PP.Lex(Tok); // comma
+    if (Tok.isNot(tok::comma)) {
+      PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_comma) << "plugin";
+      return;
+    }
+
+    // dsl expression
+    PP.Lex(StringLiteralTok);
+    if (StringLiteralTok.isNot(tok::string_literal)) {
+      PP.Diag(StringLiteralTok.getLocation(),
+              diag::warn_pragma_expected_section_name)
+          << "plugin";
+      return;
+    }
+    StringLiteralTokens.clear();
+    StringLiteralTokens.push_back(StringLiteralTok);
+    std::string dslExpr =
+        StringLiteralParser(StringLiteralTokens, PP).GetString().str();
+    llvm::errs() << "DSEXPR: " << dslExpr << "\n";
+
+    // rparen
+    PP.Lex(Tok);
+    if (Tok.isNot(tok::r_paren)) {
+      PP.Diag(Tok.getLocation(), diag::warn_pragma_expected_rparen) << "plugin";
+      return;
+    }
+
+    std::string composedName = pluginName + ":" + dslExpr;
+    llvm::errs() << "COMPOSED NAME: " << composedName << "\n";
+    auto result = plinfo.SymbolTable.try_emplace(FuncId, composedName);
+    assert(result.second &&
+           "Shouldn't define plugin over the same func id more than once.");
+  }
+};
+
 } // namespace
 
 void addPragmaLowerToHandlers(Preprocessor &PP, LowerToInfo &LTInfo) {
@@ -237,4 +319,8 @@ void addPragmaScopHandlers(Preprocessor &PP, ScopLocList &scopLocList) {
 
 void addPragmaEndScopHandlers(Preprocessor &PP, ScopLocList &scopLocList) {
   PP.AddPragmaHandler(new PragmaEndScopHandler(scopLocList));
+}
+
+void addPragmaPlugin(Preprocessor &PP, PluginInfo &plinfo) {
+  PP.AddPragmaHandler(new PragmaPluginHandler(plinfo));
 }
