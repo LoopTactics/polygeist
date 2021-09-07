@@ -2881,9 +2881,25 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
       a->dump();
     }
     assert(arg.val && "expect not null");
-    if (auto ice = dyn_cast<ImplicitCastExpr>(a))
-      if (auto dre = dyn_cast<DeclRefExpr>(ice->getSubExpr()))
+
+    // TODO: generalize. Need a way to collect all DeclRefExpr
+    // for a CallExpr.
+    if (auto ice = dyn_cast<ImplicitCastExpr>(a)) {
+      if (auto uo = dyn_cast<clang::UnaryOperator>(ice->getSubExpr())) {
+        if (auto nestedIce = dyn_cast<ImplicitCastExpr>(uo->getSubExpr())) {
+          if (auto dre = dyn_cast<DeclRefExpr>(nestedIce->getSubExpr())) {
+            llvm::errs() << "val: " << arg.val << "\n";
+            llvm::errs() << "name: " << dre->getDecl()->getName() << "\n";
+            mapFuncOperands.insert(dre->getDecl()->getName(), arg.val);
+          }
+        }
+      }
+      if (auto dre = dyn_cast<DeclRefExpr>(ice->getSubExpr())) {
+        llvm::errs() << "val: " << arg.val << "\n";
+        llvm::errs() << "name: " << dre->getDecl()->getName() << "\n";
         mapFuncOperands.insert(dre->getDecl()->getName(), arg.val);
+      }
+    }
 
     if (i >= fnType.getInputs().size()) {
       expr->dump();
@@ -3010,6 +3026,13 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
                                 builder, inputOperands, outputOperands)
                                 ->getResult(0),
                             /*isReference=*/false);
+  }
+
+  // clang plugin
+  if (tocall.getName() == "kernel_mvt") {
+    return ValueWithOffsets(
+        mlirclang::replaceFuncByOperationTest(tocall, builder, mapFuncOperands),
+        false);
   }
 
   bool isArrayReturn = false;
