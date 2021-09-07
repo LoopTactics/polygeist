@@ -1888,7 +1888,6 @@ MLIRScanner::EmitGPUCallExpr(clang::CallExpr *expr) {
 }
 
 ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
-
   auto loc = getMLIRLocation(expr->getExprLoc());
   /*
   if (auto ic = dyn_cast<ImplicitCastExpr>(expr->getCallee()))
@@ -2871,7 +2870,9 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
   std::vector<std::pair<ValueWithOffsets, ValueWithOffsets>> toRestore;
 
   // map from declaration name to mlir::value
-  std::map<std::string, mlir::Value> mapFuncOperands;
+  llvm::ScopedHashTable<llvm::StringRef, mlir::Value> mapFuncOperands;
+  llvm::ScopedHashTableScope<llvm::StringRef, mlir::Value> scope(
+      mapFuncOperands);
 
   for (clang::Expr *a : expr->arguments()) {
     ValueWithOffsets arg = Visit(a);
@@ -2882,8 +2883,7 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
     assert(arg.val && "expect not null");
     if (auto ice = dyn_cast<ImplicitCastExpr>(a))
       if (auto dre = dyn_cast<DeclRefExpr>(ice->getSubExpr()))
-        mapFuncOperands.insert(
-            make_pair(dre->getDecl()->getName().str(), arg.val));
+        mapFuncOperands.insert(dre->getDecl()->getName(), arg.val);
 
     if (i >= fnType.getInputs().size()) {
       expr->dump();
@@ -2996,11 +2996,11 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
     SmallVector<mlir::Value> inputOperands;
     SmallVector<mlir::Value> outputOperands;
     for (StringRef input : LTInfo.InputSymbol)
-      if (mapFuncOperands.find(input.str()) != mapFuncOperands.end())
-        inputOperands.push_back(mapFuncOperands[input.str()]);
+      if (mlir::Value v = mapFuncOperands.lookup(input))
+        inputOperands.push_back(v);
     for (StringRef output : LTInfo.OutputSymbol)
-      if (mapFuncOperands.find(output.str()) != mapFuncOperands.end())
-        outputOperands.push_back(mapFuncOperands[output.str()]);
+      if (mlir::Value v = mapFuncOperands.lookup(output))
+        outputOperands.push_back(v);
 
     if (inputOperands.size() == 0)
       inputOperands.append(args);
