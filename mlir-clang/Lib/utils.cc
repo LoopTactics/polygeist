@@ -19,6 +19,10 @@
 
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 
+#include "Plugin/Linalg/MLIRGen.h"
+#include "Plugin/Linalg/tc/lang/parser.h"
+#include "Plugin/Linalg/tc/lang/sema.h"
+
 using namespace mlir;
 using namespace llvm;
 
@@ -53,4 +57,22 @@ Operation *mlirclang::replaceFuncByOperation(FuncOp f, StringRef opName,
   OperationState opState(b.getUnknownLoc(), op->name, input,
                          f.getCallableResults(), {});
   return b.createOperation(opState);
+}
+
+mlir::Value mlirclang::replaceFuncByOperationTest(
+    FuncOp func, OpBuilder &builder,
+    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &operandsMap) {
+  teckyl::MLIRGenImpl generator(func.getContext(), builder, operandsMap);
+  lang::Parser parser(R"(
+  {
+    x1(i) += A(i,j) * y_1(j)
+    x2(i) += A(j,i) * y_2(j)
+  }
+  )");
+  std::vector<lang::TreeRef> comps = parser.parseStmts();
+  mlir::Value val = nullptr;
+  for (lang::TreeRef comp : comps)
+    val = generator.buildComprehension(lang::Comprehension(comp));
+
+  return val;
 }

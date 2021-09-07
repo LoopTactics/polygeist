@@ -8,6 +8,7 @@
 
 #include "clang-mlir.h"
 #include "utils.h"
+#include "llvm/ADT/ScopedHashTable.h"
 #include "llvm/Support/Debug.h"
 #include <clang/AST/Decl.h>
 #include <clang/Basic/DiagnosticOptions.h>

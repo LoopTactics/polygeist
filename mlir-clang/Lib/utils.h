@@ -10,6 +10,7 @@
 #define MLIR_TOOLS_MLIRCLANG_UTILS_H
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/ScopedHashTable.h"
 
 namespace mlir {
 class Operation;
@@ -41,6 +42,10 @@ mlir::Operation *buildLinalgOp(const mlir::AbstractOperation *op,
                                mlir::OpBuilder &b,
                                llvm::SmallVectorImpl<mlir::Value> &input,
                                llvm::SmallVectorImpl<mlir::Value> &output);
+
+mlir::Value replaceFuncByOperationTest(
+    mlir::FuncOp f, mlir::OpBuilder &b,
+    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &operands);
 
 } // namespace mlirclang
 

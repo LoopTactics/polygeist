@@ -31,6 +31,7 @@
 #include "mlir/Target/LLVMIR/TypeToLLVM.h"
 #include "polygeist/Ops.h"
 #include "pragmaHandler.h"
+#include "syntaxHandler.h"
 #include "llvm/IR/DerivedTypes.h"
 
 #include "clang/../../lib/CodeGen/CGRecordLayout.h"
@@ -325,6 +326,7 @@ struct MLIRASTConsumer : public ASTConsumer {
   bool error;
   ScopLocList scopLocList;
   LowerToInfo LTInfo;
+  // SyntaxInfo SInfo;
 
   /// The stateful type translator (contains named structs).
   LLVM::TypeFromLLVMIRTranslator typeTranslator;
@@ -352,6 +354,7 @@ struct MLIRASTConsumer : public ASTConsumer {
     addPragmaScopHandlers(PP, scopLocList);
     addPragmaEndScopHandlers(PP, scopLocList);
     addPragmaLowerToHandlers(PP, LTInfo);
+    addSyntaxHandlers();
   }
 
   ~MLIRASTConsumer() {}
