@@ -1,5 +1,5 @@
-#include "MLIRGen.h"
-#include "MLIRAffineExprGen.h"
+#include "mlirGen.h"
+#include "mlirAffineExprGen.h"
 
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 #include "mlir/Dialect/MemRef/IR/MemRef.h"
@@ -140,6 +140,7 @@ static std::unordered_map<std::string, teckyl::IteratorKind> collectIterators(
 }
 
 // FIXME: run sema analysis, and collect TK_ACCESS
+// TK_APPLY
 static llvm::SmallVector<std::pair<std::string, lang::ListView<lang::TreeRef>>,
                          8>
 collectTensorAccessesSeq(const lang::TreeRef &t) {
@@ -148,7 +149,7 @@ collectTensorAccessesSeq(const lang::TreeRef &t) {
 
   // Collect all tensor accesses in subexpressions
   mapRecursive(t, [&](const lang::TreeRef &e) {
-    if (e->kind() == lang::TK_APPLY) {
+    if (e->kind() == lang::TK_ACCESS) {
       llvm::outs() << lang::pretty_tree(e) << "\n";
       lang::Apply a = lang::Apply(e);
       res.push_back(std::make_pair(a.name().name(), a.arguments()));
@@ -429,11 +430,12 @@ mlir::FuncOp MLIRGenImpl::buildFunction(const std::string name,
   return funcOp;
 }
 
-mlir::FuncOp buildMLIRFunction(mlir::MLIRContext &context,
-                               const std::string name, const lang::Def &tc) {
-  // MLIRGenImpl generator(context);
-  // return generator.buildFunction(name, tc);
-  return nullptr;
+mlir::FuncOp buildMLIRFunction(
+    mlir::MLIRContext *context, mlir::OpBuilder &builder,
+    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &symbolTable,
+    const std::string name, const lang::Def &tc) {
+  MLIRGenImpl generator(context, builder, symbolTable);
+  return generator.buildFunction(name, tc);
 }
 
 mlir::Value MLIRMappedValueExprGen::buildConstant(const lang::Const &cst) {

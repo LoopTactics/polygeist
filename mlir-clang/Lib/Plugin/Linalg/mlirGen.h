@@ -128,8 +128,10 @@ private:
       mlir::Location location);
 };
 
-mlir::FuncOp buildMLIRFunction(mlir::MLIRContext &context,
-                               const std::string name, const lang::Def &tc);
+mlir::FuncOp buildMLIRFunction(
+    mlir::MLIRContext *context, mlir::OpBuilder &builder,
+    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &symbolTable,
+    const std::string name, const lang::Def &tc);
 
 } // namespace teckyl
 

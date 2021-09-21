@@ -8,8 +8,8 @@ add_clang_tool(mlir-clang
   Lib/syntaxHandler.cc
 
   #Linalg plugin
-  Lib/Plugin/Linalg/MLIRAffineExprGen.cpp
-  Lib/Plugin/Linalg/MLIRGen.cpp
+  Lib/Plugin/Linalg/mlirAffineExprGen.cpp
+  Lib/Plugin/Linalg/mlirGen.cpp
   Lib/Plugin/Linalg/tc/lexer.cc
   Lib/Plugin/Linalg/tc/parser.cc
   Lib/Plugin/Linalg/tc/tree.cpp

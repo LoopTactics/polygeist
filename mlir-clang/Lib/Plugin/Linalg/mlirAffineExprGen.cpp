@@ -1,4 +1,4 @@
-#include "MLIRAffineExprGen.h"
+#include "mlirAffineExprGen.h"
 
 namespace teckyl {
 
