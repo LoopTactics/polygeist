@@ -19,7 +19,7 @@
 
 #include "mlir/Dialect/Linalg/IR/LinalgOps.h"
 
-#include "Plugin/Linalg/MLIRGen.h"
+#include "Plugin/Linalg/mlirGen.h"
 #include "Plugin/Linalg/tc/lang/parser.h"
 #include "Plugin/Linalg/tc/lang/sema.h"
 
