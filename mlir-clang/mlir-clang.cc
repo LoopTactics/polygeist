@@ -19,6 +19,7 @@
 #include <clang/Frontend/TextDiagnosticPrinter.h>
 #include <clang/Frontend/Utils.h>
 
+#include "mlir/Conversion/ReconcileUnrealizedCasts/ReconcileUnrealizedCasts.h"
 #include "mlir/Conversion/AffineToStandard/AffineToStandard.h"
 #include "mlir/Conversion/LLVMCommon/LoweringOptions.h"
 #include "mlir/Conversion/MathToLLVM/MathToLLVM.h"
@@ -39,6 +40,9 @@
 #include "mlir/Target/LLVMIR/Dialect/OpenMP/OpenMPToLLVMIRTranslation.h"
 #include "mlir/Target/LLVMIR/Export.h"
 #include "mlir/Transforms/Passes.h"
+#include "mlir/Dialect/StandardOps/Transforms/Passes.h"
+#include "mlir/Dialect/Linalg/Passes.h"
+#include "mlir/Dialect/Tensor/Transforms/Passes.h"
 
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/FileSystem.h"
@@ -437,6 +441,15 @@ int main(int argc, char **argv) {
       return 5;
     }
 
+    //pm.addPass(mlir::createTensorConstantBufferizePass());
+    //pm.nest<mlir::FuncOp>().addPass(mlir::createStdBufferizePass());
+    //pm.nest<mlir::FuncOp>().addPass(mlir::createLinalgBufferizePass());
+    //pm.addPass(mlir::createCanonicalizerPass());
+    //pm.nest<mlir::FuncOp>().addPass(mlir::createTensorBufferizePass());
+    //pm.addPass(mlir::createFuncBufferizePass());
+    //pm.addPass(mlir::createCanonicalizerPass());
+    //pm.nest<mlir::FuncOp>().addPass(mlir::createFinalizingBufferizePass());
+
 #define optPM optPM2
 #define pm pm2
     {
@@ -500,17 +513,21 @@ int main(int argc, char **argv) {
       optPM.addPass(mlir::createCanonicalizerPass());
     }
     pm.addPass(mlir::createSymbolDCEPass());
+    // linalg plugin
+    
+    // end linalg plugin
 
     if (EmitLLVM || !EmitAssembly) {
       pm.addPass(mlir::createLowerAffinePass());
       pm.nest<mlir::FuncOp>().addPass(mlir::createConvertMathToLLVMPass());
+      
       if (mlir::failed(pm.run(module.get()))) {
         module->dump();
         return 4;
       }
       mlir::PassManager pm2(&context);
       if (SCFOpenMP)
-        pm2.nest<mlir::FuncOp>().addPass(createConvertSCFToOpenMPPass());
+        //pm2.nest<mlir::FuncOp>().addPass(createConvertSCFToOpenMPPass());
       if (mlir::failed(pm2.run(module.get()))) {
         module->dump();
         return 4;
@@ -525,6 +542,7 @@ int main(int argc, char **argv) {
       // invalid for gemm.c init array
       // options.useBarePtrCallConv = true;
       pm3.addPass(mlir::createLowerToLLVMPass(options));
+      //pm3.addPass(mlir::createReconcileUnrealizedCastsPass());
       if (mlir::failed(pm3.run(module.get()))) {
         module->dump();
         return 4;
