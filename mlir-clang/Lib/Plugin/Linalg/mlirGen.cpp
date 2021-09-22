@@ -140,7 +140,6 @@ static std::unordered_map<std::string, teckyl::IteratorKind> collectIterators(
 }
 
 // FIXME: run sema analysis, and collect TK_ACCESS
-// TK_APPLY
 static llvm::SmallVector<std::pair<std::string, lang::ListView<lang::TreeRef>>,
                          8>
 collectTensorAccessesSeq(const lang::TreeRef &t) {
@@ -149,7 +148,7 @@ collectTensorAccessesSeq(const lang::TreeRef &t) {
 
   // Collect all tensor accesses in subexpressions
   mapRecursive(t, [&](const lang::TreeRef &e) {
-    if (e->kind() == lang::TK_ACCESS) {
+    if (e->kind() == lang::TK_APPLY) {
       llvm::outs() << lang::pretty_tree(e) << "\n";
       lang::Apply a = lang::Apply(e);
       res.push_back(std::make_pair(a.name().name(), a.arguments()));
@@ -368,12 +367,10 @@ mlir::Value MLIRGenImpl::buildComprehension(const lang::Comprehension &c) {
   mlir::Operation *redCore = buildLinalgReductionCore(
       c, outTensorVal, iterators, iteratorSeq, builder_.getUnknownLoc());
 
-  // cast back to memref, and introduce a copyOp to avoid DCE.
-  mlir::Value cast = builder_.create<mlir::memref::BufferCastOp>(
-      builder_.getUnknownLoc(), outMemRefVal.getType(), redCore->getResult(0));
-  builder_.create<mlir::linalg::CopyOp>(builder_.getUnknownLoc(), cast,
-                                        outMemRefVal);
-  return cast;
+  // store back to memref.
+  builder_.create<mlir::memref::TensorStoreOp>(
+    builder_.getUnknownLoc(), redCore->getResult(0), outMemRefVal);
+  return outMemRefVal;
 }
 
 mlir::FuncOp MLIRGenImpl::buildFunction(const std::string name,
