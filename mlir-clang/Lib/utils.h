@@ -45,7 +45,8 @@ mlir::Operation *buildLinalgOp(const mlir::AbstractOperation *op,
 
 mlir::Value replaceFuncByOperationTest(
     mlir::FuncOp f, mlir::OpBuilder &b,
-    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &operands);
+    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &operands,
+    std::string body);
 
 } // namespace mlirclang
 

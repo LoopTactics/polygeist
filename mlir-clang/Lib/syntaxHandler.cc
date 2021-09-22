@@ -1,4 +1,5 @@
 #include "syntaxHandler.h"
+#include "mlir/Support/FileUtilities.h"
 #include "clang/Parse/Parser.h"
 #include "llvm/Support/ToolOutputFile.h"
 #include "llvm/Support/YAMLTraits.h"
@@ -50,8 +51,17 @@ public:
     content += "\n";
     LinalgPlugin p = {funcName, content};
 
-    Output yout(llvm::outs());
+    std::string errorMessage;
+    std::unique_ptr<llvm::ToolOutputFile> outPlugin;
+    outPlugin = mlir::openOutputFile("tokens.plugin", &errorMessage);
+    if (!outPlugin) {
+      llvm::errs() << errorMessage << "\n";
+      return;
+    }
+    Output yout(outPlugin->os());
     yout << p;
+    if (outPlugin)
+      outPlugin->keep();
   }
 
   void AddToPredefines(llvm::raw_string_ostream &OS) override {}

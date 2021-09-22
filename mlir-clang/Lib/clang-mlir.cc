@@ -7,9 +7,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "clang-mlir.h"
+#include "mlir/Support/FileUtilities.h"
 #include "utils.h"
 #include "llvm/ADT/ScopedHashTable.h"
 #include "llvm/Support/Debug.h"
+#include "llvm/Support/YAMLTraits.h"
 #include <clang/AST/Decl.h>
 #include <clang/Basic/DiagnosticOptions.h>
 #include <clang/Basic/FileManager.h>
@@ -38,6 +40,28 @@ using namespace llvm::opt;
 using namespace mlir;
 
 #define DEBUG_TYPE "clang-mlir"
+
+namespace {
+
+struct LinalgPlugin {
+  std::string funcName;
+  std::string body;
+};
+
+} // namespace
+
+namespace llvm {
+namespace yaml {
+
+template <> struct MappingTraits<LinalgPlugin> {
+  static void mapping(IO &io, LinalgPlugin &info) {
+    io.mapRequired("funcName", info.funcName);
+    io.mapRequired("body", info.body);
+  }
+};
+
+} // namespace yaml
+} // namespace llvm
 
 class IfScope {
 public:
@@ -3030,10 +3054,25 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
   }
 
   // clang plugin
-  if (tocall.getName() == "kernel_mvt") {
-    return ValueWithOffsets(
-        mlirclang::replaceFuncByOperationTest(tocall, builder, mapFuncOperands),
-        false);
+  std::string errorMessage;
+  std::unique_ptr<llvm::MemoryBuffer> file =
+      mlir::openInputFile("tokens.plugin", &errorMessage);
+  if (!file) {
+    llvm::errs() << errorMessage << "\n";
+  }
+  if (file) {
+    using llvm::yaml::Input;
+    Input yin(file->getBuffer());
+    LinalgPlugin plugin;
+    yin >> plugin;
+    if (yin.error())
+      assert(0 && "error while parsing");
+    if (tocall.getName() == plugin.funcName) {
+      return ValueWithOffsets(
+          mlirclang::replaceFuncByOperationTest(tocall, builder,
+                                                mapFuncOperands, plugin.body),
+          false);
+    }
   }
 
   bool isArrayReturn = false;

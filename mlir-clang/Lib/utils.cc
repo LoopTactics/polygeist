@@ -61,14 +61,12 @@ Operation *mlirclang::replaceFuncByOperation(FuncOp f, StringRef opName,
 
 mlir::Value mlirclang::replaceFuncByOperationTest(
     FuncOp func, OpBuilder &builder,
-    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &operandsMap) {
+    llvm::ScopedHashTable<llvm::StringRef, mlir::Value> &operandsMap,
+    std::string body) {
   teckyl::MLIRGenImpl generator(func.getContext(), builder, operandsMap);
-  lang::Parser parser(R"(
-  {
-    x1(i) += A(i,j) * y_1(j)
-    x2(i) += A(j,i) * y_2(j)
-  }
-  )");
+  // wrap in between {}
+  std::string c = "{" + body + "}";
+  lang::Parser parser(c);
   std::vector<lang::TreeRef> comps = parser.parseStmts();
   mlir::Value val = nullptr;
   for (lang::TreeRef comp : comps)
