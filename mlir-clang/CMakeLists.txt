@@ -46,6 +46,9 @@ target_link_libraries(mlir-clang PRIVATE
     #    ${LLVM_LINK_COMPONENTS}
     ${LLVM_AVAILABLE_LIBS}
 
+  MLIRLinalgTransforms
+  MLIRTensorTransforms
+  MLIRReconcileUnrealizedCasts
   MLIRSCFTransforms
   MLIRPolygeist
 

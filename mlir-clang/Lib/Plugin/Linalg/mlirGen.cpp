@@ -149,7 +149,7 @@ collectTensorAccessesSeq(const lang::TreeRef &t) {
   // Collect all tensor accesses in subexpressions
   mapRecursive(t, [&](const lang::TreeRef &e) {
     if (e->kind() == lang::TK_APPLY) {
-      llvm::outs() << lang::pretty_tree(e) << "\n";
+      //llvm::outs() << lang::pretty_tree(e) << "\n";
       lang::Apply a = lang::Apply(e);
       res.push_back(std::make_pair(a.name().name(), a.arguments()));
     }
@@ -162,8 +162,8 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
     const std::unordered_map<std::string, IteratorKind> &iterators,
     const llvm::SmallVectorImpl<std::string> &iteratorSeq,
     mlir::Location location) {
-  llvm::outs() << __func__ << "\n";
-  llvm::outs() << lang::pretty_tree(c.rhs()) << "\n";
+  //llvm::outs() << __func__ << "\n";
+  //llvm::outs() << lang::pretty_tree(c.rhs()) << "\n";
 
   llvm::SmallVector<mlir::Value, 4> inputOperands;
   llvm::SmallVector<std::string, 4> operandsAsString;
@@ -175,7 +175,7 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
   llvm::SmallVector<std::pair<std::string, lang::ListView<lang::TreeRef>>, 8>
       tensorAccesses = collectTensorAccessesSeq(c.rhs());
 
-  llvm::errs() << "read tensor accesses: " << tensorAccesses.size() << "\n";
+  //llvm::errs() << "read tensor accesses: " << tensorAccesses.size() << "\n";
 
   // Mapping between dimension id and schedule dimension.
   std::unordered_map<std::string, size_t> iteratorDims;
@@ -193,7 +193,7 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
     codomainDim = std::max(currentDim, codomainDim);
   }
 
-  llvm::errs() << "codomainDim: " << codomainDim << "\n";
+  //llvm::errs() << "codomainDim: " << codomainDim << "\n";
 
   // map tensor name to affine map.
   std::unordered_map<std::string, mlir::AffineMap> tensorToMap;
@@ -204,9 +204,8 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
         affGen.buildAffineExpressions(access.second);
     mlir::AffineMap map =
         mlir::AffineMap::get(codomainDim, 0, affineExprs, context_);
-    llvm::errs() << "map: "
-                 << "\n";
-    map.dump();
+    //llvm::errs() << "map: " << "\n";
+    //map.dump();
     mlir::Value memrefValue = symbolTable_.lookup(access.first);
     // convert memref to tensor.
     mlir::Value tensorValue = builder_.create<mlir::memref::TensorLoadOp>(
@@ -217,7 +216,7 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
     operandsAsString.push_back(access.first);
   }
 
-  llvm::errs() << "tensor to map: " << tensorToMap.size() << "\n";
+  //llvm::errs() << "tensor to map: " << tensorToMap.size() << "\n";
 
   // outputs. TODO: only single output?
   outputOperands.push_back(tensor);
@@ -226,9 +225,8 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
       affGen.buildAffineExpressions(c.indices());
   mlir::AffineMap map =
       mlir::AffineMap::get(codomainDim, 0, affineExprs, context_);
-  llvm::errs() << "map: "
-               << "\n";
-  map.dump();
+  //llvm::errs() << "map: "           << "\n";
+  //map.dump();
   tensorToMap.insert({c.ident().name(), map});
   types.push_back(outputOperands[0].getType());
   tensorIds.push_back(c.ident().name());
@@ -247,7 +245,7 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
   for (std::string operand : operandsAsString)
     indexingMaps.push_back(tensorToMap[operand]);
 
-  llvm::errs() << "bulding linalg generic op\n";
+  //llvm::errs() << "bulding linalg generic op\n";
   // TODO: do not push tensor output if dealing with =
   mlir::Operation *genericOp = builder_.create<mlir::linalg::GenericOp>(
       builder_.getUnknownLoc(), types, inputOperands, outputOperands,
@@ -323,7 +321,7 @@ void MLIRGenImpl::buildTensorInitialization(mlir::Value tensor,
 }
 
 mlir::Value MLIRGenImpl::buildComprehension(const lang::Comprehension &c) {
-  llvm::outs() << lang::pretty_tree(c) << "\n";
+  //llvm::outs() << lang::pretty_tree(c) << "\n";
   llvm::ScopedHashTableScope<llvm::StringRef, mlir::Value> scope(symbolTable_);
 
   std::unordered_map<std::string, IteratorKind> iterators =
@@ -352,7 +350,7 @@ mlir::Value MLIRGenImpl::buildComprehension(const lang::Comprehension &c) {
   mlir::Value outTensorVal = builder_.create<mlir::memref::TensorLoadOp>(
       builder_.getUnknownLoc(), outMemRefVal);
   symbolTable_.insert(llvm::StringRef(outTensorName), outTensorVal);
-  outTensorVal.dump();
+  //outTensorVal.dump();
 
   if (c.assignment()->kind() == lang::TK_PLUS_EQ_B)
     buildTensorInitialization(outTensorVal, NeutralElement::Zero);
@@ -469,7 +467,7 @@ mlir::Value MLIRMappedValueExprGen::buildBinaryExpr(const lang::TreeRef &t) {
 }
 
 mlir::Value MLIRMappedValueExprGen::buildExprImpl(const lang::TreeRef &t) {
-  llvm::outs() << lang::pretty_tree(t) << "\n";
+  //llvm::outs() << lang::pretty_tree(t) << "\n";
   switch (t->kind()) {
   case '+':
     return buildBinaryExpr<mlir::AddFOp, mlir::AddIOp>(t);

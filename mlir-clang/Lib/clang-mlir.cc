@@ -2889,15 +2889,15 @@ ValueWithOffsets MLIRScanner::VisitCallExpr(clang::CallExpr *expr) {
       if (auto uo = dyn_cast<clang::UnaryOperator>(ice->getSubExpr())) {
         if (auto nestedIce = dyn_cast<ImplicitCastExpr>(uo->getSubExpr())) {
           if (auto dre = dyn_cast<DeclRefExpr>(nestedIce->getSubExpr())) {
-            llvm::errs() << "val: " << arg.val << "\n";
-            llvm::errs() << "name: " << dre->getDecl()->getName() << "\n";
+            //llvm::errs() << "val: " << arg.val << "\n";
+            //llvm::errs() << "name: " << dre->getDecl()->getName() << "\n";
             mapFuncOperands.insert(dre->getDecl()->getName(), arg.val);
           }
         }
       }
       if (auto dre = dyn_cast<DeclRefExpr>(ice->getSubExpr())) {
-        llvm::errs() << "val: " << arg.val << "\n";
-        llvm::errs() << "name: " << dre->getDecl()->getName() << "\n";
+        //llvm::errs() << "val: " << arg.val << "\n";
+        //llvm::errs() << "name: " << dre->getDecl()->getName() << "\n";
         mapFuncOperands.insert(dre->getDecl()->getName(), arg.val);
       }
     }
