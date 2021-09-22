@@ -186,12 +186,7 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
   MLIRAffineExprGen affGen(builder_.getContext(), iteratorDims);
 
   // get codomain dimension for affine map.
-  size_t codomainDim = 0;
-  for (const std::pair<std::string, lang::ListView<lang::TreeRef>> &p :
-       tensorAccesses) {
-    size_t currentDim = p.second.size();
-    codomainDim = std::max(currentDim, codomainDim);
-  }
+  size_t codomainDim = iteratorSeq.size(); 
 
   //llvm::errs() << "codomainDim: " << codomainDim << "\n";
 
