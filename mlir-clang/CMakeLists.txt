@@ -43,8 +43,7 @@ list(TRANSFORM LLVM_LINK_COMPONENTS PREPEND LLVM)
 
 target_compile_definitions(mlir-clang PUBLIC -DLLVM_OBJ_ROOT="${LLVM_BINARY_DIR}")
 target_link_libraries(mlir-clang PRIVATE
-    #    ${LLVM_LINK_COMPONENTS}
-    ${LLVM_AVAILABLE_LIBS}
+  ${LLVM_AVAILABLE_LIBS}
 
   MLIRLinalgTransforms
   MLIRTensorTransforms

@@ -69,4 +69,5 @@ include(sanitizers)
 
 add_subdirectory(include)
 add_subdirectory(mlir-clang)
+add_subdirectory(plugin-linalg)
 add_subdirectory(lib)
