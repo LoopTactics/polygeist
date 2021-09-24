@@ -277,7 +277,8 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
           break;
         case lang::TK_TIMES_EQ:
         case lang::TK_TIMES_EQ_B:
-          llvm_unreachable("Unsupported operator");
+          result = gen.buildBinaryExprFromValues<mlir::MulFOp, mlir::MulIOp>(
+              rhsVal, acc, builder_.getUnknownLoc());
           break;
         case '=':
           result = rhsVal;
@@ -340,6 +341,7 @@ mlir::Value MLIRGenImpl::buildComprehension(const lang::Comprehension &c) {
   llvm::SmallVector<std::string, 8> iteratorSeq;
   for (std::pair<std::string, IteratorKind> it : iterators)
     iteratorSeq.push_back(it.first);
+  std::reverse(iteratorSeq.begin(), iteratorSeq.end());
 
   const std::string outTensorName = c.ident().name();
   mlir::Value outVal = symbolTable_.lookup(outTensorName);
