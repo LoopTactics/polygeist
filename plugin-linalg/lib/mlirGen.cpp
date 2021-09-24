@@ -148,9 +148,9 @@ collectTensorAccessesSeq(const lang::TreeRef &t) {
 
   // Collect all tensor accesses in subexpressions
   mapRecursive(t, [&](const lang::TreeRef &e) {
-    if (e->kind() == lang::TK_APPLY) {
+    if (e->kind() == lang::TK_ACCESS) {
       //llvm::outs() << lang::pretty_tree(e) << "\n";
-      lang::Apply a = lang::Apply(e);
+      lang::Access a = lang::Access(e);
       res.push_back(std::make_pair(a.name().name(), a.arguments()));
     }
   });
@@ -162,8 +162,8 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
     const std::unordered_map<std::string, IteratorKind> &iterators,
     const llvm::SmallVectorImpl<std::string> &iteratorSeq,
     mlir::Location location) {
-  //llvm::outs() << __func__ << "\n";
-  //llvm::outs() << lang::pretty_tree(c.rhs()) << "\n";
+  // llvm::errs() << __func__ << "\n";
+  // llvm::errs() << lang::pretty_tree(c.rhs()) << "\n";
 
   llvm::SmallVector<mlir::Value, 4> inputOperands;
   llvm::SmallVector<std::string, 4> operandsAsString;
@@ -201,10 +201,15 @@ mlir::Operation *MLIRGenImpl::buildLinalgReductionCore(
         mlir::AffineMap::get(codomainDim, 0, affineExprs, context_);
     //llvm::errs() << "map: " << "\n";
     //map.dump();
-    mlir::Value memrefValue = symbolTable_.lookup(access.first);
-    // convert memref to tensor.
-    mlir::Value tensorValue = builder_.create<mlir::memref::TensorLoadOp>(
-        builder_.getUnknownLoc(), memrefValue);
+    mlir::Value mValue = symbolTable_.lookup(access.first);
+    // convert from memref to tensor if necessary.
+    mlir::Value tensorValue = nullptr;
+    if (auto memRefType = mValue.getType().dyn_cast<mlir::MemRefType>()) {
+      tensorValue = builder_.create<mlir::memref::TensorLoadOp>(
+          builder_.getUnknownLoc(), mValue);
+    } else {
+      tensorValue = mValue;
+    }
     inputOperands.push_back(tensorValue);
     tensorToMap.insert({access.first, map});
     tensorIds.push_back(access.first);
@@ -316,7 +321,8 @@ void MLIRGenImpl::buildTensorInitialization(mlir::Value tensor,
 }
 
 mlir::Value MLIRGenImpl::buildComprehension(const lang::Comprehension &c) {
-  //llvm::outs() << lang::pretty_tree(c) << "\n";
+  // llvm::errs() << __func__ << "\n";
+  // llvm::errs() << lang::pretty_tree(c) << "\n";
   llvm::ScopedHashTableScope<llvm::StringRef, mlir::Value> scope(symbolTable_);
 
   std::unordered_map<std::string, IteratorKind> iterators =
@@ -336,16 +342,22 @@ mlir::Value MLIRGenImpl::buildComprehension(const lang::Comprehension &c) {
     iteratorSeq.push_back(it.first);
 
   const std::string outTensorName = c.ident().name();
-  mlir::Value outMemRefVal = symbolTable_.lookup(outTensorName);
-  if (!outMemRefVal) {
+  mlir::Value outVal = symbolTable_.lookup(outTensorName);
+  if (!outVal) {
     llvm::errs() << "outTensorName: " << outTensorName << "\n";
-    assert(outMemRefVal && "outMemRefVal not founded in symbolTable");
+    assert(outVal && "outMemRefVal not founded in symbolTable");
   }
-  // convert to memref to tensor
-  mlir::Value outTensorVal = builder_.create<mlir::memref::TensorLoadOp>(
-      builder_.getUnknownLoc(), outMemRefVal);
-  symbolTable_.insert(llvm::StringRef(outTensorName), outTensorVal);
-  //outTensorVal.dump();
+  // convert from memref to if necessary
+  mlir::Value outTensorVal = nullptr;
+  bool requiresConversion = false;
+  if (auto outMemRefType = outVal.getType().dyn_cast<mlir::MemRefType>()) {
+    outTensorVal = builder_.create<mlir::memref::TensorLoadOp>(
+        builder_.getUnknownLoc(), outVal);
+    symbolTable_.insert(llvm::StringRef(outTensorName), outTensorVal);
+    requiresConversion = true;
+  } else {
+    outTensorVal = outVal;
+  }
 
   if (c.assignment()->kind() == lang::TK_PLUS_EQ_B)
     buildTensorInitialization(outTensorVal, NeutralElement::Zero);
@@ -356,14 +368,19 @@ mlir::Value MLIRGenImpl::buildComprehension(const lang::Comprehension &c) {
     llvm_unreachable("Unsupported reduction");
   }
 
+  // llvm::errs() << "-----outVal-\n";
+  // outTensorVal.dump();
+  // llvm::errs() << "------------\n";
   // TODO: Assuming we can always generate linalg operations.
   mlir::Operation *redCore = buildLinalgReductionCore(
       c, outTensorVal, iterators, iteratorSeq, builder_.getUnknownLoc());
 
   // store back to memref.
-  builder_.create<mlir::memref::TensorStoreOp>(
-    builder_.getUnknownLoc(), redCore->getResult(0), outMemRefVal);
-  return outMemRefVal;
+  if (requiresConversion) {
+    builder_.create<mlir::memref::TensorStoreOp>(builder_.getUnknownLoc(),
+                                                 redCore->getResult(0), outVal);
+  }
+  return outVal;
 }
 
 mlir::FuncOp MLIRGenImpl::buildFunction(const std::string name,
@@ -396,6 +413,10 @@ mlir::FuncOp MLIRGenImpl::buildFunction(const std::string name,
       mlir::FuncOp::create(builder_.getUnknownLoc(), name, funcType);
   mlir::SymbolTable::setSymbolVisibility(
       funcOp, mlir::SymbolTable::Visibility::Private);
+
+  // llvm::errs() << "----------------\n";
+  // funcOp.dump();
+  // llvm::errs() << "----------------\n";
 
   // add block for function body.
   mlir::Block *entryBlock = funcOp.addEntryBlock();
@@ -462,7 +483,6 @@ mlir::Value MLIRMappedValueExprGen::buildBinaryExpr(const lang::TreeRef &t) {
 }
 
 mlir::Value MLIRMappedValueExprGen::buildExprImpl(const lang::TreeRef &t) {
-  //llvm::outs() << lang::pretty_tree(t) << "\n";
   switch (t->kind()) {
   case '+':
     return buildBinaryExpr<mlir::AddFOp, mlir::AddIOp>(t);
@@ -487,14 +507,23 @@ mlir::Value MLIRMappedValueExprGen::buildExprImpl(const lang::TreeRef &t) {
     return buildIdent(lang::Ident(t));
   case lang::TK_APPLY:
     return buildExpr(lang::Apply(t).name());
-    // return buildIndexLoadExpr(lang::Access(t));
-  default:
+  case lang::TK_ACCESS:
+    return buildIndexLoadExpr(lang::Access(t));
+  default: {
+    llvm::errs() << lang::pretty_tree(t) << "\n";
     llvm_unreachable("Unknown tree type\n");
+  }
   }
 }
 
 mlir::Value MLIRMappedValueExprGen::buildExpr(const lang::TreeRef &t) {
-  return buildExprImpl(t);
+  // llvm::errs() << __func__ << "\n";
+  // llvm::errs() << lang::pretty_tree(t) << "\n";
+  mlir::Value builtValue = buildExprImpl(t);
+  // llvm::errs() << "------------\n";
+  // builtValue.dump();
+  // llvm::errs() << "------------\n";
+  return builtValue;
 }
 
 } // end namespace teckyl

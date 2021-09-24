@@ -1,0 +1,18 @@
+// RUN: plugin-opt %s --show-mlir | FileCheck %s
+// CHECK:       func private @matvec(%arg0: tensor<?xf32>, %arg1: tensor<?x?xf32>, %arg2: tensor<?xf32>) {
+// CHECK-NEXT:    %cst = constant 0.000000e+00 : f32
+// CHECK-NEXT:    %0 = linalg.fill(%cst, %arg2) : f32, tensor<?xf32> -> tensor<?xf32>
+// CHECK-NEXT:    %1 = linalg.generic {indexing_maps = [#map0, #map1, #map2], iterator_types = ["parallel", "reduction"]} ins(%arg1, %arg0 : tensor<?x?xf32>, tensor<?xf32>) outs(%arg2 : tensor<?xf32>) {
+// CHECK-NEXT:    ^bb0(%arg3: f32, %arg4: f32, %arg5: f32):  // no predecessors
+// CHECK-NEXT:      %2 = mulf %arg3, %arg4 : f32
+// CHECK-NEXT:      %3 = addf %2, %arg5 : f32
+// CHECK-NEXT:      linalg.yield %3 : f32
+// CHECK-NEXT:    } -> tensor<?xf32>
+// CHECK-NEXT:    return
+// CHECK-NEXT:  } 
+__start_tc
+
+def matvec(float32(N) b, float32(N, N) A) -> (float32(N) x)
+{
+  x(i) +=! A(i,j) * b(j) where i in 0:N, j in 0:N
+}

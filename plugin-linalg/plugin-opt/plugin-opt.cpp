@@ -100,7 +100,7 @@ void dumpAST(const std::map<std::string, lang::Def> &tcs) {
 void dumpMlir(const std::map<std::string, lang::Def> &tcs) {
   mlir::DialectRegistry registry;
   mlir::MLIRContext context(registry);
-  // register linalg and sparse.
+  // register linalg and tensor.
   context.getOrLoadDialect<mlir::linalg::LinalgDialect>();
   context.getOrLoadDialect<mlir::sparse_tensor::SparseTensorDialect>();
   context.disableMultithreading();

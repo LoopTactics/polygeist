@@ -65,7 +65,9 @@ public:
     } else if (isMLIRIntType(resType)) {
       return builder_.create<IOpTy>(loc, lhs, rhs);
     } else {
-      assert(0);
+      lhs.getType().dump();
+      rhs.getType().dump();
+      assert(0 && "broken types!");
     }
   }
 

@@ -8,16 +8,19 @@ add_clang_tool(mlir-clang
   Lib/syntaxHandler.cc
 
   #Linalg plugin
-  Lib/Plugin/Linalg/mlirAffineExprGen.cpp
-  Lib/Plugin/Linalg/mlirGen.cpp
-  Lib/Plugin/Linalg/tc/lexer.cc
-  Lib/Plugin/Linalg/tc/parser.cc
-  Lib/Plugin/Linalg/tc/tree.cpp
+  #Lib/Plugin/Linalg/mlirAffineExprGen.cpp
+  #Lib/Plugin/Linalg/mlirGen.cpp
+  #Lib/Plugin/Linalg/tc/lexer.cc
+  #Lib/Plugin/Linalg/tc/parser.cc
+  #Lib/Plugin/Linalg/tc/tree.cpp
 )
+
+message(STATUS ${CMAKE_BINARY_DIR})
 
 target_include_directories(mlir-clang PRIVATE
   "${LLVM_SOURCE_DIR}/../clang/include"
   "${CMAKE_BINARY_DIR}/tools/clang/include"
+  "${CMAKE_BINARY_DIR}/plugin-linalg/include"
 )
 
 set( LLVM_LINK_COMPONENTS
@@ -80,6 +83,9 @@ target_link_libraries(mlir-clang PRIVATE
   clangLex
   clangParse
   clangSerialization
+  
+  # CHECK how to build plugin before mlir-clang
+  PluginLib
 )
 add_dependencies(mlir-clang MLIRPolygeistOpsIncGen MLIRPolygeistPassIncGen)
 add_subdirectory(Test)
